@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"iter"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -151,9 +153,78 @@ func timeouts() {
 		fmt.Println("Timeout")
 	}
 }
+
+func samayaKoTicker() {
+	ticker := time.NewTicker(500 * time.Millisecond) // slower for better visibility
+	done := make(chan bool, 1)
+
+	go func() {
+		for {
+			select {
+			case <-done:
+				fmt.Println("Ticker band gariyeko!")
+				return
+			case t := <-ticker.C:
+				fmt.Println("Tick at", t.Format("2006-01-02 15:04:05"))
+			}
+		}
+	}()
+
+	time.Sleep(3 * time.Second)
+	ticker.Stop()
+	done <- true
+	fmt.Println("Ticker stopped")
+}
+
+func kaamdar(id int, jobs <-chan int, results chan<- int) {
+	for job := range jobs {
+		fmt.Println("Worker", id, "started job", job)
+		time.Sleep(time.Second)
+		fmt.Println("Worker", id, "finished job", job)
+		results <- job * 2
+	}
+
+}
+func kamaru() {
+	const numJobs = 50
+	jobs := make(chan int, numJobs)
+	results := make(chan int, numJobs)
+	// done := make(chan bool)
+	for w := 1; w <= 3; w++ {
+		go kaamdar(w, jobs, results)
+	}
+	for j := 1; j <= numJobs; j++ {
+		jobs <- j
+	}
+	close(jobs)
+	for j := 1; j <= numJobs; j++ {
+		<-results
+	}
+}
+
+func atomicOps() {
+	var ops atomic.Uint32
+	wg := sync.WaitGroup{}
+	for range 50 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range 1000 {
+				ops.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
+	fmt.Println("ops:", ops.Load())
+}
 func main() {
+	fmt.Println("=== Go Sikne Kram ===")
+
 	//dump()
 	// implementChannels()
 	// channelDirections()
-	timeouts()
+	// timeouts()
+	// samayaKoTicker()
+	// kamaru()
+	atomicOps()
 }
